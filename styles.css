@@ -1,0 +1,19 @@
+body{
+    background-color: #364F6B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 3rem;
+}
+
+canvas{
+    background-color:#3FC1C9;
+    border-radius: 2%;
+}
+
+.score{
+    width: 4rem;
+    font-size: 4rem;
+    font-family: "JetBrains Mono", serif;
+}
