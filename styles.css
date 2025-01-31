@@ -4,16 +4,53 @@ body{
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    margin-top: 3rem;
+    margin-top: 1rem;
+    overflow: hidden;
 }
 
 canvas{
-    background-color:#3FC1C9;
     border-radius: 2%;
+    transition: 400ms ease-in-out;
 }
 
-.score{
+.score{ 
     width: 4rem;
     font-size: 4rem;
     font-family: "JetBrains Mono", serif;
+    color:white;
 }
+
+button{
+    font-family: "JetBrains Mono", serif;
+    position: absolute; 
+    margin-top:4rem;
+    width:20rem;
+    height:8rem;
+    min-width: min-content;
+    min-height: min-content;
+    font-size: 3rem;
+    border-radius: 5%;
+    border:none;
+    transition: ease-in-out 500ms;
+}
+
+button:hover{
+    cursor: pointer;
+    transform: scale(1.2);
+}
+
+button:active{
+    background-color:  #364F6B;
+    color:white;
+    transition: ease-in-out 50ms;
+}
+.turnOffDisplay{
+    display: none;
+    transition: ease-in-out 400ms;}
+
+.startGame {
+    background-color:#3FC1C9;
+    transition: ease-in-out 400ms;
+
+}
+
