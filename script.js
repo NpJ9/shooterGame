@@ -1,30 +1,58 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const scoreCounter = document.getElementById("score");
-const soundsArray = ["1.wav", "2.wav",  "3.wav", "4.wav"];
 const start = document.getElementById("start");
 const reset = document.getElementById("reset");
+const points = document.getElementById("points");
+const container = document.getElementById("container");
+const percentage = document.getElementById("percentage");
+const soundsArray = ["1.wav", "2.wav",  "3.wav", "4.wav"];
 const backgroundMusic = new Audio("backgroundmusic.wav");
+const keys = {};
+let enemiesArray = [];
+let bullets = [];
 
 let audioIndex = 0;
+let totalShots = 0;
 let hits = 0;
 let score = 0;
-const keys = {};
-let tooRight = false; 
-let tooLeft = false;
-let tooHigh = false;
-let tooLow = false;
+let numEnemies = 6;
 let gameStarted = false;
 let gameOver = false;
 
-window.addEventListener('resize' ,resize, false) // Resize canvas 
+// Resize canvas 
 
-resize();
+window.addEventListener('resize' ,resize, false) // Resize canvas 
 
 function resize(){
     canvas.height = window.innerHeight * 0.9;
     canvas.width = window.innerWidth * 0.9;
 };
+
+start.addEventListener('click' ,(e) => { // Start Game
+    gameStarted = true;
+    gameOver = false;
+    score = 0;
+    totalShots = 0;
+    accuracy= 0;
+    player.x = 500;
+    player.y = 500;
+    container.classList.add("turnOffDisplay"); 
+    start.classList.add("turnOffDisplay"); 
+    scoreCounter.classList.remove("turnOffDisplay"); 
+    canvas.classList.add("startGame"); 
+    generateEnemies();   
+    gameLoop();
+    playRandomNote();
+    playBackgroundMusic();
+});
+
+reset.addEventListener('click' , (e) => {
+    playRandomNote();
+    container.classList.add("turnOffDisplay"); 
+    canvas.classList.add("startGame"); 
+    start.classList.remove("turnOffDisplay"); 
+});
 
 class Player {
     constructor(x, y, radius, color, speed) {
@@ -35,12 +63,13 @@ class Player {
         this.speed = speed;
         this.keys = {};
 
-        // Event listeners for movement
+        // Movement Event Listeners
+
         window.addEventListener("keydown", (e) => this.keys[e.key] = true); 
         window.addEventListener("keyup", (e) => this.keys[e.key] = false);
     }
 
-    // New movement handler for player
+    // New movement handler for player : Also handles collisions with canvas
 
     move(canvas) {
         if (this.keys["d"] && this.x + this.radius < canvas.width) {
@@ -51,6 +80,7 @@ class Player {
         }
         if (this.keys["s"] && this.y + this.radius < canvas.height){
             this.y += this.speed
+            
         }
         if (this.keys["w"] && this.y - this.radius > 0){
             this.y -= this.speed
@@ -69,10 +99,8 @@ class Player {
     }
 }
 
-const player = new Player(500,500, 40, "black", 5);
-
-
 // New Enemy Class
+
 class Enemy {
     constructor(x, y, radius, color, speed){
         this.x = x;
@@ -112,8 +140,8 @@ class Enemy {
 
     randomEnemyPosition(){
         do {
-            this.x = Math.floor(Math.random() * (canvas.width - 20));
-            this.y = Math.floor(Math.random() * (canvas.height - 20));
+            this.x = Math.floor(Math.random() * (canvas.width - 30));
+            this.y = Math.floor(Math.random() * (canvas.height - 30));
             let dx = player.x - this.x;
             let dy = player.y - this.y;
             var distance = Math.sqrt(dx * dx + dy * dy);
@@ -122,6 +150,7 @@ class Enemy {
     }
 }
 
+let player = new Player(500,500, 40, "black", 5);
 
 class Bullet {
     constructor(x, y, targetX, targetY, radius, color, speed){
@@ -150,42 +179,28 @@ class Bullet {
         ctx.closePath();
     }
 
-    outOfBound(canvas){ // removes bullets if leave the canvas
+    outOfBound(canvas){ // Removes Bullets When They Leave Canvas
         return(
-            this.x < 0 || this.x > canvas.width ||  // if x/y coordinates outside of canvas do this
+            this.x < 0 || this.x > canvas.width ||
             this.y < 0 || this.y > canvas.height
         );
-
     }
 }
 
-// CLICK TO CREATE BULLETS
-
-let bullets = [];
-
-canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiiton of player to mouse position
-    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, 10 , "red", 10);
-    bullets.push(bullet);
-    console.log(bullets)
-    playRandomNote();
-    
-});
-
-
 // Enemy Generator
 
-let enemiesArray = [];
-
-function generateEnemies(numEnemies = 5) {
+function generateEnemies() {
     enemiesArray = [];
     for (let i = 0; i < numEnemies; i ++){
         let enemy = new Enemy(Math.random() * canvas.width, Math.random() * canvas.height, 20, "red", 3); // Generate new enemy
         enemiesArray.push(enemy)
     }
-    
 }
 
+// Main Game Loop Handles Drawing/Animation
+
 function gameLoop(){
+    if (gameStarted === false) return
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     player.move(canvas);
@@ -201,51 +216,26 @@ function gameLoop(){
 
         if (bullet.outOfBound(canvas)) {
             bullets.splice(index, 1);
-        }
+        };
     });
-
     checkPlayerCollision();
     checksBulletCollisions();
     requestAnimationFrame(gameLoop);
-  
+    winConditions();
 }
 
-
-// Collisions Functions 
-
-function checkCollisions(){    // Checks X Axis For Collisions
-    if(player.x > (canvas.width - 40)){
-        tooRight = true
-    } else if (player.x < (40)){
-        tooLeft = true;
-    } else {
-        tooLeft = false;
-        tooRight = false;
-    };
-
-    if (player.y > (canvas.height - 40)){    // Checks y Axis For Collisions
-        tooLow = true; 
-    } else if (player.y < (40)){
-        tooHigh = true;
-    } else {
-        tooHigh = false;
-        tooLow = false;
-    };
-};
 
 function checkPlayerCollision(){
     enemiesArray.forEach(enemy => { // For each enemy in enemy array check for collisions
     let dx = player.x - enemy.x;
     let dy = player.y - enemy.y;
-
     let distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance < player.radius && enemy.radius && !gameOver){// 40 player radius and 20 for enemy radius
+    if (distance < player.radius && enemy.radius && !gameOver){ // 40 player radius and 20 for enemy radius
         console.log("Collision");
         gameOver = true;
         endGame();
-    } 
-    })
-
+    }; 
+    });
 }
 
 function checksBulletCollisions(){
@@ -264,11 +254,65 @@ function checksBulletCollisions(){
             }
         });
     });
-}
+};
 
-// SOUNDS 
+// Check Win Conditions
 
-function playRandomNote() { // Plays Random Note On Click
+function winConditions(){ 
+    if(score === numEnemies){
+        score = 0;
+        gameOver = true;
+        endGame();
+    };
+};
+
+function calculateAccuracy(){
+    let accuracy = score / totalShots * 100;
+    accuracy = parseInt(accuracy);
+    percentage.innerText = accuracy + "%";
+    switch(true) {
+
+        case (isNaN(accuracy)):
+            percentage.style.color = "red";
+            percentage.innerText = "0%";
+            break;
+        case (accuracy >= 80):
+            percentage.style.color = "green";
+            break;
+        case (accuracy < 80 && accuracy >= 60):
+            percentage.style.color = "orange";
+            break;
+        case (accuracy < 60):
+            percentage.style.color = "red";
+        break;
+    };
+};
+
+
+// End Game
+
+function endGame() {
+    if (!gameOver) return
+    calculateAccuracy();
+    gameStarted = false;
+    gameOver = false;
+    playBackgroundMusic();
+    container.classList.remove("turnOffDisplay"); 
+    scoreCounter.classList.add("turnOffDisplay"); 
+    canvas.classList.remove("startGame"); 
+    scoreCounter.innerHTML = "0";
+    setTimeout(() => {
+        if (!gameOver) {  // Ensure it plays only once
+            gameOver = true; // Mark game as ended
+            endGameSound();
+        };
+    }, 200); 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+// Game Sounds 
+
+function playRandomNote() { 
     const newSound = new Audio(soundsArray[audioIndex]) 
     if (audioIndex === 3){audioIndex = 0};
     audioIndex = audioIndex + 1;
@@ -277,7 +321,7 @@ function playRandomNote() { // Plays Random Note On Click
     newSound.play();
     }
 
-function playBackgroundMusic() { // Plays Background Music
+function playBackgroundMusic() {
     if(gameStarted) {
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.4;
@@ -286,217 +330,14 @@ function playBackgroundMusic() { // Plays Background Music
         backgroundMusic.pause();
         backgroundMusic.currentTime = 0
     };
-  
 }
 
-function endGameSound() { // Play Game End Sound 
-    const endSound = new Audio("endGameSound.wav");
+function endGameSound() { 
+    let endSound = new Audio("endGameSound.wav");
+    endSound.pause();
     endSound.currentime = 0;
     endSound.volume = 0.4;
     endSound.play();
 };
 
-// Win conditions
-
-function winConditions(){ // Check Win Conditions
-    if(score === 3){
-        gameStarted = false;
-        endGame();
-        score = 0;
-        enemiesArray =[];
-        bullets = [];
-        numEnemies = 0;
-    }
-}
-
-start.addEventListener('click' ,(e) => { // Start Game
-    gameStarted = true;
-    generateEnemies();
-
-    start.classList.add("turnOffDisplay"); 
-    scoreCounter.classList.remove("turnOffDisplay"); 
-    canvas.classList.add("startGame");    
-    gameLoop();
-    // getRandomEnemyPosition();
-    playRandomNote();
-    playBackgroundMusic();
- 
-});
-
-reset.addEventListener('click' , (e) => {
-    circle = null;
-    enemy = null;
-    playRandomNote();
-    gameStarted = false;
-    reset.classList.add("turnOffDisplay"); 
-    canvas.classList.add("startGame"); 
-})
-
-function endGame(bullet) { // End Game
-    if (!gameOver) return
-    gameStarted = false;
-    start.classList.remove("turnOffDisplay"); 
-    scoreCounter.classList.add("turnOffDisplay"); 
-    reset.classList.remove("turnOffDisplay"); 
-    canvas.classList.remove("startGame"); 
-    playBackgroundMusic();
-    setTimeout(() => {
-        if (!gameOver) {  // Ensure it plays only once
-            endGameSound();
-            gameOver = true; // Mark game as ended
-        }
-    }, 400); 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    scoreCounter.innerHTML = "0";
-    gameOver = false;
-};
-
-
-
-// TO DO
-// Check if player collides with enemy 
-// Learn about classes to add bullets that when collide with enemy remove points
-// Refactor and make player into class too 
-// Make circle function into game loop 
-
-
-
-
-// function drawCircle() { // Draw Character Circle
-// ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-//     circle = new Path2D();
-//     circle.arc(x, y, 40, 0, 2 * Math.PI);
-//     ctx.fillStyle ="#FC5185";
-//     ctx.strokeStyle= "#FC5185"
-//     ctx.lineWidth = 8; 
-//     ctx.stroke(circle);
-//     ctx.fill(circle);    
-// };
-
-
-    // if(gameStarted === false) return;
-    // if (keys["d"] && !tooRight){
-    //     x += velocity
-    // };
-
-    // if (keys["a"] && !tooLeft){
-    //     x -= velocity
-    // };
-
-    // if (keys["s"] && !tooLow){
-    //     y += velocity;
-    // };
-
-    // if (keys["w"] && !tooHigh){
-    //     y -= velocity;
-    // };
-
-
-    
-
-// function drawEnemy(){ // Draws enemy
-//     let enemyRadius = 20;
-//     enemy = new Path2D();
-//     enemy.arc(enemyX, enemyY, enemyRadius, 0, 2 * Math.PI);
-//     ctx.fillStyle = "#FC5185";
-//     ctx.strokeStyle= "#FC5185"
-//     ctx.lineWidth = 8;
-//     ctx.fill(enemy);
-//     ctx.stroke(enemy);
-// };
-
-// function moveEnemy(){
-//     enemyX += enemyVX;
-//     enemyY += enemyVY;
-
-//     if(enemyX - enemyRadius <= 0 || enemyX + enemyRadius >= canvas.width){
-//         enemyVX *= -1; // Reverse direction
-//     }
-
-//     if(enemyY - enemyRadius <= 0 || enemyY + enemyRadius >= canvas.height){
-//         enemyVY *= -1; // Reverse direction
-//     }
-// }
-
-
-// Old event listeners for movement 
-// window.addEventListener("keydown", (e) => this.keys[e.key] = true);
-
-// window.addEventListener("keyup", (e) => this.keys[e.key] = false);
-
-
-
-// function moveCircle() { // Moves Circle on KeyPress Also Acts As Game Loop
-//     // if(gameStarted === false) return;
-//     // if (keys["d"] && !tooRight){
-//     //     x += velocity
-//     // };
-
-//     // if (keys["a"] && !tooLeft){
-//     //     x -= velocity
-//     // };
-
-//     // if (keys["s"] && !tooLow){
-//     //     y += velocity;
-//     // };
-
-//     // if (keys["w"] && !tooHigh){
-//     //     y -= velocity;
-//     // };
-
-  
-//     // drawEnemy(); 
-//     // moveEnemy();
-//     checkCollisions();
-//     requestAnimationFrame(moveCircle);
-//     checkPlayerCollision();
-//     winConditions();
-
-// };
-
-
-
-
-
-
-// canvas.addEventListener('mousedown', function (e) {// Draws Shooting Lines According to MouseDown Location
-//     e.preventDefault();
-//     if(gameStarted === false) return;
-//     let mouseX = e.offsetX;
-//     let mouseY = e.offsetY;
-//     let line = new Path2D();
-//     line.moveTo(mouseX, mouseY);
-//     line.lineTo(player.x, player.y);
-//     ctx.fillStyle ="#FC5185";
-//     ctx.strokeStyle= "#FC5185";
-//     ctx.stroke(line);
-//     lines.push(line);
-//     setTimeout(() => {
-//         lines.shift(); // Removes First Line after 50ms
-//     }, 50); 
-
-// });
-
-
-// canvas.addEventListener('mousedown', function (e){ // Checks If Enemy Is Hit
-//     if(gameStarted === false) return;
-//     let mouseX = e.offsetX;
-//     let mouseY = e.offsetY;
-
-//     if (enemy && ctx.isPointInPath(enemy, mouseX , mouseY)){
-//         console.log("Hit the enemy")
-//         hits +=1 ;
-//         console.log("Total enemy hits: " + hits);
-//     }
-
-//     if (hits === 3){
-//         getRandomEnemyPosition();
-//         hits = 0;
-//         score += 1;
-//         scoreCounter.innerText = score;
-//     }    
-//     playRandomNote();
-// });
-
+resize();

@@ -33,11 +33,40 @@ button{
     border-radius: 5%;
     border:none;
     transition: ease-in-out 500ms;
+    z-index: 1;
 }
 
 button:hover{
     cursor: pointer;
     transform: scale(1.2);
+}
+
+.reset{
+    margin:0;
+    position: relative;
+    width:15rem;
+}
+
+.reset:hover{
+    cursor: pointer;
+    transform: scale(1.1);
+}
+
+.gameover{
+    color:aliceblue
+}
+
+.container{
+    font-family: "JetBrains Mono", serif;
+    font-size: 4rem;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: ease-in-out 500ms;
+    gap:2rem;
+    color: green;
 }
 
 button:active{
