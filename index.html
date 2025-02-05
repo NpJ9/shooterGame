@@ -11,16 +11,22 @@
 </head>
 <body>
     <canvas id = "canvas"></canvas>
-    <button id = "start" class = "start ">Start</button>
-    <!-- <button id = "reset" class = "reset turnOffDisplay ">Reset</button> -->
 
+    <button id = "start" class = "start ">Start</button>
         <div id = "container" class = "container turnOffDisplay">
             <div class = "gameover ">Game Over</div>
-            <div id = "percentage" class = "percentage "></div>
-            <button id = "reset" class = "reset ">Reset</button>
+                <div id = "percentage" class = "percentage "></div>
+                    <button id = "reset" class = "reset ">Reset</button>
         </div>
 
     <div id = "score" class = "score turnOffDisplay">0</div>
+
+    <div id = "enemyNumContainer" class = "enemyNumberContainer">
+        <div class ="Enemies">Enemies</div>
+            <button id = "minusEnemy" class = "minusPlusEnemy">-</button>
+                <div id = "enemyCount" class = "enemyCountclass">1</div>
+                    <button id = "addEnemy" class = "minusPlusEnemy">+</button>
+    </div>
 
 </body>
 <script src= "script.js"></script>
