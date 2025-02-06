@@ -21,14 +21,14 @@ let audioIndex = 0;
 let totalShots = 0;
 let hits = 0;
 let score = 0;
-let numEnemies = 1;
+let numEnemies = 5;
 let gameStarted = false;
 let gameOver = false;
 
 
 // TO DO
-// Add Animation on enemy kill
 // Add levels 
+// Add Pickups
 
 minusEnemy.addEventListener("click", (e) =>{
     if (numEnemies === 1 || gameStarted === true) return;
@@ -42,8 +42,6 @@ addEnemy.addEventListener("click", (e) =>{
     enemyNumber.textContent = numEnemies
 });
 
-// Animation
-
 // Resize canvas 
 
 window.addEventListener('resize' ,resize, false) // Resize canvas 
@@ -51,7 +49,7 @@ window.addEventListener('resize' ,resize, false) // Resize canvas
 function resize(){
     canvas.height = window.innerHeight * 0.9;
     canvas.width = window.innerWidth * 0.9;
-    getEnemyNum()
+    // getEnemyNum()
 };
 
 start.addEventListener('click' ,(e) => { // Start Game
@@ -83,15 +81,13 @@ reset.addEventListener('click' , (e) => {
 
 canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiiton of player to mouse position
     if (gameStarted === false) return;
-    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, 10 , "red", 10);
+    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, 10 , "green", 10);
     bullets.push(bullet);
     console.log(bullets)
     totalShots += 1; 
     playRandomNote();
     
 });
-
-
 
 class Player {
     constructor(x, y, radius, color, speed) {
@@ -118,7 +114,6 @@ class Player {
         }
         if (this.keys["s"] && this.y + this.radius < canvas.height){
             this.y += this.speed
-            
         }
         if (this.keys["w"] && this.y - this.radius > 0){
             this.y -= this.speed
@@ -184,13 +179,10 @@ class Enemy {
             let dy = player.y - this.y;
             var distance = Math.sqrt(dx * dx + dy * dy);
         } while (distance < 100); // Not spawn at same position of Player
-        
     }
 }
 
-
 let player = new Player(500,500, 40, "black", 5);
-
 
 // Template for hit animation
 
@@ -202,20 +194,22 @@ class Hit_Animation {
         this.color = color;
         this.speed = speed;
         let angle = Math.random() * Math.PI * 2; // Randomizes velocity direction (-1 or 1)
-        this.enemyVX = Math.cos(angle) * this.speed;
-        this.enemyVY = Math.sin(angle) * this.speed;
+        this.vx = Math.cos(angle) * this.speed;
+        this.vy = Math.sin(angle) * this.speed;
     }
 
-
     hitAnimationMove(){
-
+        this.x +=  this.vx;
+        this.y +=  this.vy;
     }
 
     hitAnimationDraw(){
-        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.closePath();
     }
-
-    
 }
 
 class Bullet {
@@ -240,7 +234,7 @@ class Bullet {
     bulletDraw(){
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "red";
+        ctx.fillStyle = "green";
         ctx.fill();
         ctx.closePath();
     }
@@ -267,10 +261,10 @@ function generateEnemies() {
 
 function gameLoop(){
     if (gameStarted === false) return
-    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     player.move(canvas);
     player.draw(ctx);
+
     enemiesArray.forEach((enemy) => {
         enemy.enemyMove();
         enemy.enemyDraw();
@@ -284,6 +278,12 @@ function gameLoop(){
             bullets.splice(index, 1);
         };
     });
+
+    explosionParticleArray.forEach((explosionParticles) => {
+        explosionParticles.hitAnimationMove();
+        explosionParticles.hitAnimationDraw();
+    });
+
     checkPlayerCollision();
     checksBulletCollisions();
     requestAnimationFrame(gameLoop);
@@ -304,6 +304,18 @@ function checkPlayerCollision(){
     });
 }
 
+// Generates Particle Explosion Effect 
+
+let explosionParticleArray = [];
+
+function generateExplosionParticles(enemy) {
+    for (let i = 0; i < 8; i ++){
+        let explosionParticles = new Hit_Animation(enemy.x, enemy.y, 4, "blue", 5);
+        explosionParticleArray.push(explosionParticles)
+        console.log(explosionParticleArray)
+    } 
+}
+
 function checksBulletCollisions(){
     bullets.forEach((bullet, bulletIndex) => { // for each bullet and enemie check their relative positions 
         enemiesArray.forEach((enemy, enemyIndex) => {
@@ -315,11 +327,8 @@ function checksBulletCollisions(){
             console.log("You hit an enemy!");
             score += 1;
             enemiesArray.splice(enemyIndex, 1); // Removes enemy on collision 
-            
-            // This is where i should trigger the death animation for the bullet at the index
-
             bullets.splice(bulletIndex, 1); // Removes bullet on collision
-
+            generateExplosionParticles(enemy); // Trigger Animation on collision
             scoreCounter.innerText = score;
             }
         });
@@ -365,6 +374,7 @@ function endGame() {
     calculateAccuracy();
     gameStarted = false;
     gameOver = false;
+    explosionParticleArray = [];
     playBackgroundMusic();
     container.classList.remove("turnOffDisplay"); 
     scoreCounter.classList.add("turnOffDisplay"); 
@@ -411,9 +421,3 @@ function endGameSound() {
 };
 
 resize();
-
-// TO DO
-
-// Add animations to  eneny death
-// Find position of collision and draw a new object there
-// create an animation class to handle this
