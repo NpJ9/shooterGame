@@ -6,6 +6,7 @@ body{
     flex-direction: column;
     margin-top: 1rem;
     overflow: hidden;
+    user-select: none
 }
 
 canvas{

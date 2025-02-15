@@ -22,9 +22,10 @@ let totalShots = 0;
 let hits = 0;
 let score = 0;
 let numEnemies = 5;
+let numBosses = 5;
+let bossHealth = 5;
 let gameStarted = false;
 let gameOver = false;
-
 
 // TO DO
 // Add levels 
@@ -66,6 +67,8 @@ start.addEventListener('click' ,(e) => { // Start Game
     enemyNumContainer.classList.add("turnOffDisplay"); 
     canvas.classList.add("startGame"); 
     generateEnemies();   
+    generateBoss();
+    generatePickUp();
     gameLoop();
     playRandomNote();
     playBackgroundMusic();
@@ -76,7 +79,6 @@ reset.addEventListener('click' , (e) => {
     container.classList.add("turnOffDisplay"); 
     canvas.classList.add("startGame"); 
     start.classList.remove("turnOffDisplay");  
-    
 });
 
 canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiiton of player to mouse position
@@ -86,7 +88,6 @@ canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiito
     console.log(bullets)
     totalShots += 1; 
     playRandomNote();
-    
 });
 
 class Player {
@@ -135,12 +136,13 @@ class Player {
 // New Enemy Class
 
 class Enemy {
-    constructor(x, y, radius, color, speed){
+    constructor(x, y, radius, color, speed, hp){
         this.x = x;
         this.y = y;
         this.radius = radius;
         this.color = color;
         this.speed = speed;
+        this.hp = hp;
         this.randomEnemyPosition();
         let angle = Math.random() * Math.PI * 2; // Randomizes velocity direction (-1 or 1)
         this.enemyVX = Math.cos(angle) * this.speed;
@@ -184,7 +186,32 @@ class Enemy {
 
 let player = new Player(500,500, 40, "black", 5);
 
-// Template for hit animation
+class Pickup {
+    constructor(x, y, width, height, color){
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+    }
+
+    selectPickupType(){
+
+    }
+
+    drawPickup(){
+        ctx.beginPath();
+        ctx.rect(this.x , this.y, this.width , this.height, "green");
+        ctx.fillStyle = "purple";
+        ctx.fill()  
+        ctx.closePath();
+    }
+} 
+
+
+function generatePickUp(){ // Generates one pickup
+    pickup = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, this.color);
+}
 
 class Hit_Animation {
     constructor(x, y,radius, color, speed){
@@ -244,17 +271,25 @@ class Bullet {
             this.x < 0 || this.x > canvas.width ||
             this.y < 0 || this.y > canvas.height
         );
-    }
-}
+    };
+};
 
 // Enemy Generator
 
 function generateEnemies() {
     enemiesArray = [];
     for (let i = 0; i < numEnemies; i ++){
-        let enemy = new Enemy(Math.random() * canvas.width, Math.random() * canvas.height, 20, "red", 3); // Generate new enemy
+        let enemy = new Enemy(Math.random() * canvas.width, Math.random() * canvas.height, 20, "red", 3, 1); // Generate new enemy
         enemiesArray.push(enemy)
-    }
+    };
+};
+
+function generateBoss(){
+    enemyBoss = [];
+    for (let i = 0; i < numBosses; i++){
+    let boss = new Enemy(Math.random() * canvas.width - 20, Math.random() * canvas.height - 20, 50, "green", 2, 5);
+    enemyBoss.push(boss)
+    };
 }
 
 // Main Game Loop Handles Drawing/Animation
@@ -264,6 +299,14 @@ function gameLoop(){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     player.move(canvas);
     player.draw(ctx);
+
+    pickup.drawPickup() 
+    console.log(pickup.x)/// DRAW PICKUP
+    
+    enemyBoss.forEach((boss) => {
+        boss.enemyMove();
+        boss.enemyDraw();
+    });
 
     enemiesArray.forEach((enemy) => {
         enemy.enemyMove();
@@ -288,21 +331,31 @@ function gameLoop(){
     checksBulletCollisions();
     requestAnimationFrame(gameLoop);
     winConditions();
-}
-
+};
 
 function checkPlayerCollision(){
     enemiesArray.forEach(enemy => { // For each enemy in enemy array check for collisions
     let dx = player.x - enemy.x;
     let dy = player.y - enemy.y;
     let distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance < player.radius && enemy.radius && !gameOver){ // 40 player radius and 20 for enemy radius
+    if (distance < player.radius + 20 && enemy.radius && !gameOver ){
         console.log("Collision");
         gameOver = true;
         endGame();
     }; 
     });
-}
+
+    enemyBoss.forEach(boss => { // For each Boss check for collisions
+        let dx = player.x - boss.x;
+        let dy = player.y - boss.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + 40 && boss.radius && !gameOver ){ 
+            console.log("Collision");
+            gameOver = true;
+            endGame();
+        }; 
+        });
+};
 
 // Generates Particle Explosion Effect 
 
@@ -311,10 +364,10 @@ let explosionParticleArray = [];
 function generateExplosionParticles(enemy) {
     for (let i = 0; i < 8; i ++){
         let explosionParticles = new Hit_Animation(enemy.x, enemy.y, 4, "blue", 5);
-        explosionParticleArray.push(explosionParticles)
-        console.log(explosionParticleArray)
+        explosionParticleArray.push(explosionParticles);
+        console.log(explosionParticleArray);
     } 
-}
+};
 
 function checksBulletCollisions(){
     bullets.forEach((bullet, bulletIndex) => { // for each bullet and enemie check their relative positions 
@@ -333,14 +386,38 @@ function checksBulletCollisions(){
             }
         });
     });
+
+// Boss Bullet detection 
+
+    bullets.forEach((bullet, bulletIndex) => { 
+        enemyBoss.forEach((boss, bossIndex) => {
+            let dx = boss.x - bullet.x;
+            let dy = boss.y - bullet.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);    
+    
+        if (distance < bullet.radius + boss.radius){ 
+            console.log("You hit a boss!");
+            boss.hp -= 1;
+            bullets.splice(bulletIndex, 1); 
+            generateExplosionParticles(boss);  
+            if (boss.hp === 0){
+                enemyBoss.splice(bossIndex, 1); 
+                score += 1;
+            }
+            scoreCounter.innerText = score;
+            }
+        });
+    });
 };
 
 // Check Win Conditions
 
 function winConditions(){ 
-    if(score === numEnemies){
+    let totalEnemies = numEnemies + numBosses
+    console.log("total enemies" + totalEnemies)
+    if(score === totalEnemies){
         gameOver = true;
-        endGame();
+        endGame(); 
         score = 0;
     };
 };
@@ -421,3 +498,19 @@ function endGameSound() {
 };
 
 resize();
+
+
+
+
+// Game ideas
+// Pickups: Speed boost, bigger bullet, shotgun style bullet
+// Class for pickups: Default pick up class: Modulate with randomiser: That changes value/data
+// New types of enemies?
+// Add enemies that require more than one hit : need to register hits on that enemy and store hits fro that enemy 
+
+// Rogue Like
+// Entrance either side : takes to next level
+// Randomize pickups on entrance: enter a new screen with 2-3 options 
+// Increase difficulty: Increase Num of enemies/speed
+// After 3 levels: boss level
+// Boss also can shoot: Larger: can take more hits 
