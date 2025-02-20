@@ -23,7 +23,13 @@ let hits = 0;
 let score = 0;
 let numEnemies = 5;
 let numBosses = 5;
+let bulletSize = 10;
+let numPickUps = 3;
+let pickUpArray  = [];
 let bossHealth = 5;
+let bombArray = [];
+let numBombs = 2;
+let explosionParticleArray = [];
 let gameStarted = false;
 let gameOver = false;
 
@@ -50,7 +56,6 @@ window.addEventListener('resize' ,resize, false) // Resize canvas
 function resize(){
     canvas.height = window.innerHeight * 0.9;
     canvas.width = window.innerWidth * 0.9;
-    // getEnemyNum()
 };
 
 start.addEventListener('click' ,(e) => { // Start Game
@@ -69,6 +74,7 @@ start.addEventListener('click' ,(e) => { // Start Game
     generateEnemies();   
     generateBoss();
     generatePickUp();
+    generateBomb();
     gameLoop();
     playRandomNote();
     playBackgroundMusic();
@@ -83,9 +89,8 @@ reset.addEventListener('click' , (e) => {
 
 canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiiton of player to mouse position
     if (gameStarted === false) return;
-    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, 10 , "green", 10);
+    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, bulletSize , "green", 10);
     bullets.push(bullet);
-    console.log(bullets)
     totalShots += 1; 
     playRandomNote();
 });
@@ -98,12 +103,11 @@ class Player {
         this.color = color;
         this.speed = speed;
         this.keys = {};
+    
         // Movement Event Listeners
-
         window.addEventListener("keydown", (e) => this.keys[e.key] = true); 
         window.addEventListener("keyup", (e) => this.keys[e.key] = false);
     }
-
     // New movement handler for player : Also handles collisions with canvas
 
     move(canvas) {
@@ -126,9 +130,6 @@ class Player {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.strokeStyle ="black";
-        ctx.lineWidth = 3;
-        ctx.stroke();
         ctx.closePath();
     }
 }
@@ -174,25 +175,27 @@ class Enemy {
     }
 
     randomEnemyPosition(){
+        const margin = 40;
         do {
-            this.x = Math.floor(Math.random() * (canvas.width - 30));
-            this.y = Math.floor(Math.random() * (canvas.height - 30));
+            this.x = Math.floor(Math.random() * (canvas.width - 2 * margin) + margin);
+            this.y = Math.floor(Math.random() * (canvas.height - 2 * margin) + margin);
             let dx = player.x - this.x;
             let dy = player.y - this.y;
             var distance = Math.sqrt(dx * dx + dy * dy);
-        } while (distance < 100); // Not spawn at same position of Player
+        } while (distance < 100 ); // Not spawn at same position of Player
     }
 }
 
 let player = new Player(500,500, 40, "black", 5);
 
 class Pickup {
-    constructor(x, y, width, height, color){
+    constructor(x, y, width, height, color,type){
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
         this.color = color;
+        this.type = type;
     }
 
     selectPickupType(){
@@ -201,18 +204,13 @@ class Pickup {
 
     drawPickup(){
         ctx.beginPath();
-        ctx.rect(this.x , this.y, this.width , this.height, "green");
-        ctx.fillStyle = "purple";
+        ctx.rect(this.x , this.y, this.width, this.height, this.color);
+        ctx.fillStyle = this.color;
         ctx.fill()  
         ctx.closePath();
     }
 } 
-
-
-function generatePickUp(){ // Generates one pickup
-    pickup = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, this.color);
-}
-
+ 
 class Hit_Animation {
     constructor(x, y,radius, color, speed){
         this.x = x;
@@ -284,10 +282,27 @@ function generateEnemies() {
     };
 };
 
+function generatePickUp(){ // Generates one pickup
+    for (let i = 0; i < numPickUps; i++){
+    let pickUp = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, "white");
+    pickUpArray.push(pickUp)
+    }
+}
+
+function generateBomb(){
+    let bomb = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 30, 30, "black");
+    bombArray.push(bomb)
+}
+
+
+// let bombArray = [];
+// let numBombs = 2;
+
+
 function generateBoss(){
     enemyBoss = [];
     for (let i = 0; i < numBosses; i++){
-    let boss = new Enemy(Math.random() * canvas.width - 20, Math.random() * canvas.height - 20, 50, "green", 2, 5);
+    let boss = new Enemy(Math.random() * canvas.width - 20, Math.random() * canvas.height - 20, 50, "red", 2, 5);
     enemyBoss.push(boss)
     };
 }
@@ -300,9 +315,14 @@ function gameLoop(){
     player.move(canvas);
     player.draw(ctx);
 
-    pickup.drawPickup() 
-    console.log(pickup.x)/// DRAW PICKUP
-    
+    pickUpArray.forEach((pickUp) => {
+        pickUp.drawPickup() 
+    });
+
+    bombArray.forEach((bomb) => {
+        bomb.drawPickup() 
+    });
+
     enemyBoss.forEach((boss) => {
         boss.enemyMove();
         boss.enemyDraw();
@@ -327,6 +347,12 @@ function gameLoop(){
         explosionParticles.hitAnimationDraw();
     });
 
+    
+    bombParticleArray.forEach((bombParticles) => {
+        bombParticles.hitAnimationMove();
+        bombParticles.hitAnimationDraw();
+    });
+
     checkPlayerCollision();
     checksBulletCollisions();
     requestAnimationFrame(gameLoop);
@@ -339,10 +365,9 @@ function checkPlayerCollision(){
     let dy = player.y - enemy.y;
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < player.radius + 20 && enemy.radius && !gameOver ){
-        console.log("Collision");
         gameOver = true;
         endGame();
-    }; 
+        }; 
     });
 
     enemyBoss.forEach(boss => { // For each Boss check for collisions
@@ -350,24 +375,52 @@ function checkPlayerCollision(){
         let dy = player.y - boss.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < player.radius + 40 && boss.radius && !gameOver ){ 
-            console.log("Collision");
             gameOver = true;
             endGame();
         }; 
-        });
+    });
+
+    pickUpArray.forEach((pickUp, pickUpIndex) => { // For each pickup check for collisions
+        let dx = player.x - pickUp.x;
+        let dy = player.y - pickUp.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + 40 && pickUp.width && pickUp.height && !gameOver ){ 
+            // pickUpArray = [];
+            player.color = "blue"; 
+            bulletSize = 15;
+            pickUpArray.splice(pickUpIndex, 1); 
+            generatePickUpSound();
+        }; 
+    });
+
+    bombArray.forEach((bomb,bombIndex) => { // For each Boss check for collisions
+        let dx = player.x - bomb.x;
+        let dy = player.y - bomb.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + 40 && bomb.height && bomb.width && !gameOver ){ 
+            bombArray.splice(bombIndex, 1); 
+            generateBombParticles(bomb);
+            generateBombSound();
+        }; 
+    });
 };
 
 // Generates Particle Explosion Effect 
-
-let explosionParticleArray = [];
 
 function generateExplosionParticles(enemy) {
     for (let i = 0; i < 8; i ++){
         let explosionParticles = new Hit_Animation(enemy.x, enemy.y, 4, "blue", 5);
         explosionParticleArray.push(explosionParticles);
-        console.log(explosionParticleArray);
     } 
 };
+
+let bombParticleArray  =[];
+function generateBombParticles(bomb){
+    for (let i = 0; i < 40; i ++){
+        let bombParticles = new Hit_Animation(bomb.x, bomb.y, 15, "orange", 10);
+        bombParticleArray.push(bombParticles);
+    } 
+}
 
 function checksBulletCollisions(){
     bullets.forEach((bullet, bulletIndex) => { // for each bullet and enemie check their relative positions 
@@ -375,13 +428,28 @@ function checksBulletCollisions(){
             let dx = enemy.x - bullet.x;
             let dy = enemy.y - bullet.y;
             let distance = Math.sqrt(dx * dx + dy * dy);    
-    
         if (distance < bullet.radius + enemy.radius){ // Check collision condition 
-            console.log("You hit an enemy!");
             score += 1;
-            enemiesArray.splice(enemyIndex, 1); // Removes enemy on collision 
-            bullets.splice(bulletIndex, 1); // Removes bullet on collision
-            generateExplosionParticles(enemy); // Trigger Animation on collision
+            hits += 1;
+            enemiesArray.splice(enemyIndex, 1); 
+            bullets.splice(bulletIndex, 1); 
+            generateExplosionParticles(enemy); 
+            scoreCounter.innerText = score;
+            }
+        });
+    });
+
+    bombParticleArray.forEach((bombParticles, bombParticlesIndex) => { // for each bullet and enemie check their relative positions 
+        enemiesArray.forEach((enemy, enemyIndex) => {
+            let dx = enemy.x - bombParticles.x;
+            let dy = enemy.y - bombParticles.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);    
+        if (distance < bombParticles.radius + enemy.radius){ // Check collision condition 
+            console.log("bomb particle hit enemy")
+            enemiesArray.splice(enemyIndex, 1); 
+            bombParticleArray.splice(bombParticlesIndex, 1); 
+            generateExplosionParticles(enemy); 
+            score += 1;
             scoreCounter.innerText = score;
             }
         });
@@ -396,15 +464,15 @@ function checksBulletCollisions(){
             let distance = Math.sqrt(dx * dx + dy * dy);    
     
         if (distance < bullet.radius + boss.radius){ 
-            console.log("You hit a boss!");
             boss.hp -= 1;
+            hits += 1;
             bullets.splice(bulletIndex, 1); 
             generateExplosionParticles(boss);  
             if (boss.hp === 0){
                 enemyBoss.splice(bossIndex, 1); 
                 score += 1;
             }
-            scoreCounter.innerText = score;
+            scoreCounter.innerText = hits;
             }
         });
     });
@@ -414,19 +482,18 @@ function checksBulletCollisions(){
 
 function winConditions(){ 
     let totalEnemies = numEnemies + numBosses
-    console.log("total enemies" + totalEnemies)
     if(score === totalEnemies){
         gameOver = true;
         endGame(); 
         score = 0;
+        hits = 0;
     };
 };
 
 function calculateAccuracy(){
-    let accuracy = score / totalShots * 100;
+    let accuracy = hits / totalShots * 100;
     accuracy = parseInt(accuracy);
     percentage.innerText = accuracy + "%";
-
     switch(true) {
         case (isNaN(accuracy)):
             percentage.style.color = "red";
@@ -452,6 +519,9 @@ function endGame() {
     gameStarted = false;
     gameOver = false;
     explosionParticleArray = [];
+    pickUpArray = [];
+    player.color = "black";
+    bulletSize = 10;
     playBackgroundMusic();
     container.classList.remove("turnOffDisplay"); 
     scoreCounter.classList.add("turnOffDisplay"); 
@@ -489,6 +559,18 @@ function playBackgroundMusic() {
     };
 }
 
+function generateBombSound(){
+    const bombSound = new Audio("bomb.wav")
+    bombSound.play();
+    bombSound.volume = 0.4;
+};
+
+function generatePickUpSound(){
+    const pickUpSound = new Audio("pickUpSound.wav")
+    pickUpSound.play();
+    pickUpSound.volume = 0.6;
+};
+
 function endGameSound() { 
     let endSound = new Audio("endGameSound.wav");
     endSound.pause();
@@ -499,14 +581,11 @@ function endGameSound() {
 
 resize();
 
-
-
+// When explosion particles leave screen delete them
+// Change colour on array pickups
 
 // Game ideas
 // Pickups: Speed boost, bigger bullet, shotgun style bullet
-// Class for pickups: Default pick up class: Modulate with randomiser: That changes value/data
-// New types of enemies?
-// Add enemies that require more than one hit : need to register hits on that enemy and store hits fro that enemy 
 
 // Rogue Like
 // Entrance either side : takes to next level
@@ -514,3 +593,22 @@ resize();
 // Increase difficulty: Increase Num of enemies/speed
 // After 3 levels: boss level
 // Boss also can shoot: Larger: can take more hits 
+
+//     randomEnemyPosition(){
+//         let minDistance = 100;
+//         let maxDistance = Math.min(canvas.width, canvas.height); 
+
+//         let validPosition = false;
+
+//         while (!validPosition){
+//         let angle = Math.random() * Math.PI * 2;
+//         let distance = minDistance + Math.random() * (maxDistance - minDistance);
+
+//         this.x = player.x + Math.cos(angle) * distance;
+//         this.y = player.y + Math.sin(angle) * distance;
+
+//         if(this.x >= 0 && this.x <= canvas.width - 30 && this.y >= 0 && this.y <= canvas.height - 30){
+//             validPosition = true
+//         }
+//     }
+// }
