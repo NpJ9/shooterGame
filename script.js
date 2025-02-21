@@ -21,21 +21,26 @@ let audioIndex = 0;
 let totalShots = 0;
 let hits = 0;
 let score = 0;
+let bulletSpeed = 7.5;
 let numEnemies = 5;
 let numBosses = 5;
 let bulletSize = 10;
-let numPickUps = 3;
+let numPickUps = 1;
 let pickUpArray  = [];
 let bossHealth = 5;
 let bombArray = [];
-let numBombs = 2;
+let numBombs = 5;
 let explosionParticleArray = [];
+let bombParticleArray  =[];
+let shotgunArray = [];
+let shotgunPickUpNum = 1;
 let gameStarted = false;
 let gameOver = false;
 
+
+let shotgunPickedUp = false;
 // TO DO
 // Add levels 
-// Add Pickups
 
 minusEnemy.addEventListener("click", (e) =>{
     if (numEnemies === 1 || gameStarted === true) return;
@@ -73,8 +78,12 @@ start.addEventListener('click' ,(e) => { // Start Game
     canvas.classList.add("startGame"); 
     generateEnemies();   
     generateBoss();
+    generateSpeedBoost();
     generatePickUp();
     generateBomb();
+    generateShotgun();
+    drawLeftDoor();
+    drawRightDoor();
     gameLoop();
     playRandomNote();
     playBackgroundMusic();
@@ -89,10 +98,24 @@ reset.addEventListener('click' , (e) => {
 
 canvas.addEventListener('click', (e) => { // Adds a bullet to array from posiiton of player to mouse position
     if (gameStarted === false) return;
-    let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, bulletSize , "green", 10);
-    bullets.push(bullet);
-    totalShots += 1; 
-    playRandomNote();
+    if (shotgunPickedUp === true){
+        let randomNumber = 0;
+        // need to select a number from -200 to 200
+        // this number is added or taken away from the offset
+        // gives gun spread
+        for (let i = 0; i < 5 ; i ++) {
+            let bullet = new Bullet(player.x, player.y, e.offsetX + 100, e.offsetY, bulletSize , "green", bulletSpeed);
+            bullets.push(bullet);
+            totalShots += 1; 
+            playRandomNote();    
+        }
+    } else {
+        let bullet = new Bullet(player.x, player.y, e.offsetX, e.offsetY, bulletSize , "green", bulletSpeed);
+        bullets.push(bullet);
+        totalShots += 1; 
+        playRandomNote(); 
+    }
+
 });
 
 class Player {
@@ -153,11 +176,11 @@ class Enemy {
     enemyMove(){
         this.x +=  this.enemyVX;
         this.y +=  this.enemyVY;
-    
+        
         if(this.x - this.radius <= 0 || this.x + this.radius >= canvas.width){
             this.enemyVX *= -1; // Reverse direction
         }
-    
+        
         if(this.y - this.radius <= 0 || this.y + this.radius >= canvas.height){
             this.enemyVY *= -1; // Reverse direction
         }
@@ -196,10 +219,18 @@ class Pickup {
         this.height = height;
         this.color = color;
         this.type = type;
+        this.randomPickUpPosition();
     }
 
-    selectPickupType(){
-
+    randomPickUpPosition(){
+        const margin = 40;
+        do {
+            this.x = Math.floor(Math.random() * (canvas.width - 2 * margin) + margin);
+            this.y = Math.floor(Math.random() * (canvas.height - 2 * margin) + margin);
+            let dx = player.x - this.x;
+            let dy = player.y - this.y;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+        } while (distance < 200 ); // Not spawn at same position of Player
     }
 
     drawPickup(){
@@ -274,6 +305,7 @@ class Bullet {
 
 // Enemy Generator
 
+let  speedBoostArray = [];
 function generateEnemies() {
     enemiesArray = [];
     for (let i = 0; i < numEnemies; i ++){
@@ -282,22 +314,27 @@ function generateEnemies() {
     };
 };
 
+function generateSpeedBoost(){
+    let speedBoost = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, "green");
+    speedBoostArray.push(speedBoost);
+};
+
+function generateShotgun(){
+    let shotgun = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, "purple");
+    shotgunArray.push(shotgun);
+}
+
 function generatePickUp(){ // Generates one pickup
-    for (let i = 0; i < numPickUps; i++){
     let pickUp = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 20, 20, "white");
     pickUpArray.push(pickUp)
-    }
 }
 
 function generateBomb(){
+    for (let i = 0; i < numBombs; i++){
     let bomb = new Pickup(Math.random() * canvas.width, Math.random() * canvas.height, 30, 30, "black");
     bombArray.push(bomb)
+    }
 }
-
-
-// let bombArray = [];
-// let numBombs = 2;
-
 
 function generateBoss(){
     enemyBoss = [];
@@ -307,6 +344,7 @@ function generateBoss(){
     };
 }
 
+
 // Main Game Loop Handles Drawing/Animation
 
 function gameLoop(){
@@ -315,9 +353,20 @@ function gameLoop(){
     player.move(canvas);
     player.draw(ctx);
 
+    drawLeftDoor(); // DRAW LEFT DOOR
+    drawRightDoor();
+
     pickUpArray.forEach((pickUp) => {
         pickUp.drawPickup() 
     });
+
+    speedBoostArray.forEach((speedBoost) => {
+        speedBoost.drawPickup();
+    })
+
+    shotgunArray.forEach((shotgun) => {
+        shotgun.drawPickup();
+    })
 
     bombArray.forEach((bomb) => {
         bomb.drawPickup() 
@@ -326,6 +375,7 @@ function gameLoop(){
     enemyBoss.forEach((boss) => {
         boss.enemyMove();
         boss.enemyDraw();
+        // drawBossHealthBar(boss)
     });
 
     enemiesArray.forEach((enemy) => {
@@ -359,8 +409,10 @@ function gameLoop(){
     winConditions();
 };
 
+// CHECK PLAYER COLLISIONS
+
 function checkPlayerCollision(){
-    enemiesArray.forEach(enemy => { // For each enemy in enemy array check for collisions
+    enemiesArray.forEach(enemy => { 
     let dx = player.x - enemy.x;
     let dy = player.y - enemy.y;
     let distance = Math.sqrt(dx * dx + dy * dy);
@@ -370,7 +422,7 @@ function checkPlayerCollision(){
         }; 
     });
 
-    enemyBoss.forEach(boss => { // For each Boss check for collisions
+    enemyBoss.forEach(boss => { 
         let dx = player.x - boss.x;
         let dy = player.y - boss.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
@@ -380,7 +432,7 @@ function checkPlayerCollision(){
         }; 
     });
 
-    pickUpArray.forEach((pickUp, pickUpIndex) => { // For each pickup check for collisions
+    pickUpArray.forEach((pickUp, pickUpIndex) => { 
         let dx = player.x - pickUp.x;
         let dy = player.y - pickUp.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
@@ -393,7 +445,34 @@ function checkPlayerCollision(){
         }; 
     });
 
-    bombArray.forEach((bomb,bombIndex) => { // For each Boss check for collisions
+    speedBoostArray.forEach((speedBoost, speedBoostIndex) => { 
+        let dx = player.x - speedBoost.x;
+        let dy = player.y - speedBoost.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + 40 && speedBoost.width && speedBoost.height && !gameOver ){ 
+            bulletSpeed = 15;
+            speedBoostArray.splice(speedBoostIndex, 1); 
+            generatePickUpSound();
+        }; 
+    });
+
+    // MAKE SHOTGUN 
+
+
+    shotgunArray.forEach((shotgun, shotgunArrayIndex) => { 
+        let dx = player.x - shotgun.x;
+        let dy = player.y - shotgun.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + 40 && shotgun.width && shotgun.height && !gameOver ){ 
+            // MAKE SHOTGUN BULLET IN HERE
+            shotgunPickedUp = true;
+
+            shotgunArray.splice(shotgunArrayIndex, 1); 
+            generateShotgunSound();
+        }; 
+    });
+
+    bombArray.forEach((bomb,bombIndex) => { 
         let dx = player.x - bomb.x;
         let dy = player.y - bomb.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
@@ -405,7 +484,7 @@ function checkPlayerCollision(){
     });
 };
 
-// Generates Particle Explosion Effect 
+// GENERATE PARTICLE ANIMATION EFFECTS 
 
 function generateExplosionParticles(enemy) {
     for (let i = 0; i < 8; i ++){
@@ -414,13 +493,16 @@ function generateExplosionParticles(enemy) {
     } 
 };
 
-let bombParticleArray  =[];
+
 function generateBombParticles(bomb){
     for (let i = 0; i < 40; i ++){
         let bombParticles = new Hit_Animation(bomb.x, bomb.y, 15, "orange", 10);
         bombParticleArray.push(bombParticles);
     } 
 }
+
+
+// CHECK BULLET COLLISIONS
 
 function checksBulletCollisions(){
     bullets.forEach((bullet, bulletIndex) => { // for each bullet and enemie check their relative positions 
@@ -445,11 +527,30 @@ function checksBulletCollisions(){
             let dy = enemy.y - bombParticles.y;
             let distance = Math.sqrt(dx * dx + dy * dy);    
         if (distance < bombParticles.radius + enemy.radius){ // Check collision condition 
-            console.log("bomb particle hit enemy")
             enemiesArray.splice(enemyIndex, 1); 
             bombParticleArray.splice(bombParticlesIndex, 1); 
             generateExplosionParticles(enemy); 
             score += 1;
+            scoreCounter.innerText = score;
+            }
+        });
+    });
+
+    bombParticleArray.forEach((bombParticles, bombParticlesIndex) => { // for each bullet and enemie check their relative positions 
+        enemyBoss.forEach((boss, bossIndex) => {
+            let dx = boss.x - bombParticles.x;
+            let dy = boss.y - bombParticles.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);    
+
+        if (distance < bombParticles.radius + boss.radius){ // Check collision condition 
+            boss.hp -= 1;
+            boss.radius = boss.radius * 0.85;
+            bombParticleArray.splice(bombParticlesIndex, 1); 
+            generateExplosionParticles(boss); 
+            if (boss.hp === 0){
+                enemyBoss.splice(bossIndex, 1); 
+                score += 1;
+            }
             scoreCounter.innerText = score;
             }
         });
@@ -461,18 +562,19 @@ function checksBulletCollisions(){
         enemyBoss.forEach((boss, bossIndex) => {
             let dx = boss.x - bullet.x;
             let dy = boss.y - bullet.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);    
-    
+            let distance = Math.sqrt(dx * dx + dy * dy);   
+            
         if (distance < bullet.radius + boss.radius){ 
             boss.hp -= 1;
             hits += 1;
+            boss.radius = boss.radius * 0.85;
             bullets.splice(bulletIndex, 1); 
             generateExplosionParticles(boss);  
             if (boss.hp === 0){
                 enemyBoss.splice(bossIndex, 1); 
                 score += 1;
             }
-            scoreCounter.innerText = hits;
+            scoreCounter.innerText = score;
             }
         });
     });
@@ -511,6 +613,11 @@ function calculateAccuracy(){
     };
 };
 
+// function drawBossHealthBar(boss){
+//     ctx.fillStyle ="green";
+//     ctx.fillRect(boss.x - 25, boss.y - 40, (boss.hp / 5) * 60, 10)
+// }
+
 // End Game
 
 function endGame() {
@@ -519,9 +626,15 @@ function endGame() {
     gameStarted = false;
     gameOver = false;
     explosionParticleArray = [];
+    bombParticleArray = [];
     pickUpArray = [];
+    bullets = [];
+    bombArray = [];
+    shotgunPickedUp = false;
     player.color = "black";
     bulletSize = 10;
+    player.speed = 5;
+    bulletSpeed = 7.5;
     playBackgroundMusic();
     container.classList.remove("turnOffDisplay"); 
     scoreCounter.classList.add("turnOffDisplay"); 
@@ -571,6 +684,11 @@ function generatePickUpSound(){
     pickUpSound.volume = 0.6;
 };
 
+function generateShotgunSound(){
+    const shotgunSound = new Audio("shotgunSound.wav");
+    shotgunSound.play();
+}
+
 function endGameSound() { 
     let endSound = new Audio("endGameSound.wav");
     endSound.pause();
@@ -579,7 +697,33 @@ function endGameSound() {
     endSound.play();
 };
 
+// TO DO ADD levels: User enters in either door
+// Leads to a different set of enemies (Number/speed)
+// Randomise the level 
+
+function drawLeftDoor(){ 
+    ctx.beginPath();
+    ctx.rect(0 , canvas.height / 2  - 50, 100, 100);
+    ctx.fillStyle = "black"
+    ctx.fill()  
+    ctx.closePath(); 
+}
+
+function drawRightDoor(){ 
+    ctx.beginPath();
+    ctx.rect(canvas.width - 100 , canvas.height / 2 - 50, 100, 100);
+    ctx.fillStyle = "black" 
+    ctx.fill()  
+    ctx.closePath(); 
+}
+
+
 resize();
+
+
+// IDEAS
+
+// BOMB ENEMY: BLOWS UP WHEN KILLED AND CAN DAMAGE OTHER ENEMIES 
 
 // When explosion particles leave screen delete them
 // Change colour on array pickups
